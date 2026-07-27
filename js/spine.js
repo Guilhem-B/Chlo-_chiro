@@ -1,8 +1,9 @@
 /* Chloé Chevallier — Chiropracteur
    Colonne vertébrale vue de profil.
-   La colonne s'affiche en posture affaissée. Au premier défilement, elle se
-   redresse d'un trait vers la courbure physiologique, puis la page se comporte
-   normalement — plus aucune section épinglée. */
+   La colonne s'affiche en posture affaissée. Dès que la page défile, elle se
+   redresse vers la courbure physiologique ; de retour tout en haut, elle
+   revient à la posture affaissée. Le mouvement est réversible en cours de
+   route et garde une vitesse constante. */
 
 (function () {
   'use strict';
@@ -12,7 +13,8 @@
      --------------------------------------------------------------- */
 
   var DELAY    = 0;     // ms d'attente après le déclenchement
-  var DURATION = 800;   // ms de redressement
+  var DURATION = 800;   // ms pour une course complète, dans un sens ou dans l'autre
+  var TOP_EPS  = 4;     // px sous lesquels on considère être « tout en haut »
 
   var NS = 'http://www.w3.org/2000/svg';
   var svg = document.getElementById('spine');
@@ -151,7 +153,7 @@
   }
 
   /* ---------------------------------------------------------------
-     Déclenchement au défilement, lecture en temps fixe
+     Déclenchement au défilement, dans les deux sens
      --------------------------------------------------------------- */
 
   render(0);
@@ -165,30 +167,50 @@
     return x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2;
   }
 
-  function play() {
+  var cur = 0;        // avancement affiché
+  var target = 0;     // avancement visé
+  var raf = null;
+  var pending = null;
+
+  function animateTo(to) {
+    var from = cur;
+    var dist = Math.abs(to - from);
+    target = to;
+
+    if (raf) { window.cancelAnimationFrame(raf); raf = null; }
+
+    if (dist < 0.002) { cur = to; render(cur); return; }
+
+    /* durée proportionnelle au chemin restant : la vitesse reste la même
+       qu'on parte du début ou qu'on inverse à mi-course */
+    var dur = DURATION * dist;
     var t0 = null;
+
     function frame(now) {
       if (t0 === null) { t0 = now; }
-      var p = Math.min(1, (now - t0) / DURATION);
-      render(ease(p));
-      if (p < 1) { window.requestAnimationFrame(frame); }
+      var p = Math.min(1, (now - t0) / dur);
+      cur = from + (to - from) * ease(p);
+      render(cur);
+      raf = p < 1 ? window.requestAnimationFrame(frame) : null;
     }
-    window.requestAnimationFrame(frame);
+
+    raf = window.requestAnimationFrame(frame);
   }
 
-  var started = false;
-
-  function start() {
-    if (started) { return; }
-    started = true;
-    window.removeEventListener('scroll', start);
-    if (DELAY > 0) { window.setTimeout(play, DELAY); } else { play(); }
+  function request(to) {
+    if (to === target) { return; }
+    if (pending) { window.clearTimeout(pending); pending = null; }
+    if (DELAY > 0) {
+      pending = window.setTimeout(function () { pending = null; animateTo(to); }, DELAY);
+    } else {
+      animateTo(to);
+    }
   }
 
-  /* page rouverte à une position déjà défilée : on lance sans attendre */
-  if (window.scrollY > 0) {
-    start();
-  } else {
-    window.addEventListener('scroll', start, { passive: true });
+  function onScroll() {
+    request(window.scrollY > TOP_EPS ? 1 : 0);
   }
+
+  window.addEventListener('scroll', onScroll, { passive: true });
+  onScroll();   // page rouverte à une position déjà défilée
 })();
