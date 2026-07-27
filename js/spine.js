@@ -1,16 +1,26 @@
 /* Chloé Chevallier — Chiropracteur
    Colonne vertébrale vue de profil.
-   Le défilement de la section .stage fait passer la colonne d'une posture
-   affaissée (tête projetée, dos rond, lombaires effacées) à une courbure
-   physiologique en S. Une fois la section franchie, la page défile normalement. */
+   La colonne s'affiche en posture affaissée. Au premier défilement, elle se
+   redresse d'un trait vers la courbure physiologique, puis la page se comporte
+   normalement — plus aucune section épinglée. */
 
 (function () {
   'use strict';
+
+  /* ---------------------------------------------------------------
+     Réglages
+     --------------------------------------------------------------- */
+
+  var DELAY    = 0;     // ms d'attente après le déclenchement
+  var DURATION = 800;   // ms de redressement
 
   var NS = 'http://www.w3.org/2000/svg';
   var svg = document.getElementById('spine');
   var stage = document.querySelector('.stage');
   if (!svg || !stage) { return; }
+
+  /* plus d'épinglage : la scène redevient un héros de hauteur normale */
+  document.body.classList.add('no-pin');
 
   /* ---------------------------------------------------------------
      Géométrie
@@ -94,7 +104,7 @@
 
   var skull = el('g', { 'class': 'skull' });
   skull.appendChild(el('ellipse', { cx: -14, cy: -50, rx: 33, ry: 29 }));
-  skull.appendChild(el('path', { d: 'M-45 -37 L-42 -21 L-19 -19' }));   // mâchoire
+  skull.appendChild(el('path', { d: 'M-45 -37 L-42 -21 L-19 -19' }));      // mâchoire
   skull.appendChild(el('circle', { 'class': 'dot', cx: 2, cy: -45, r: 3 })); // oreille
   svg.appendChild(skull);
 
@@ -105,7 +115,6 @@
   var capA  = document.querySelector('.cap--a');
   var capB  = document.querySelector('.cap--b');
   var meter = document.querySelector('.stage__meter span');
-  var hint  = document.querySelector('.stage__hint');
 
   function render(t) {
     var xs = [], k;
@@ -136,45 +145,50 @@
       ') rotate(' + (-5 + 18 * t).toFixed(2) + ')'
     );
 
-    if (capA)  { capA.style.opacity  = String(Math.max(0, 1 - t * 2.1)); }
-    if (capB)  { capB.style.opacity  = String(Math.max(0, (t - 0.55) * 2.4)); }
-    if (meter) { meter.style.width   = (t * 100).toFixed(1) + '%'; }
-    if (hint)  { hint.style.opacity  = String(Math.max(0, 1 - t * 3.2)); }
+    if (capA)  { capA.style.opacity = String(Math.max(0, 1 - t * 2.1)); }
+    if (capB)  { capB.style.opacity = String(Math.max(0, (t - 0.55) * 2.4)); }
+    if (meter) { meter.style.width  = (t * 100).toFixed(1) + '%'; }
   }
 
   /* ---------------------------------------------------------------
-     Pilotage par le défilement
+     Déclenchement au défilement, lecture en temps fixe
      --------------------------------------------------------------- */
 
-  var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  if (reduce) {
-    document.body.classList.add('no-pin');
+  render(0);
+
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
     render(1);
     return;
   }
 
-  function clamp(v) { return v < 0 ? 0 : (v > 1 ? 1 : v); }
-
-  var ticking = false;
-
-  function update() {
-    ticking = false;
-    var span = stage.offsetHeight - window.innerHeight;
-    var raw  = span > 0 ? clamp(-stage.getBoundingClientRect().top / span) : 1;
-
-    /* la correction s'achève à 75 % : la fin de la section tient le résultat
-       à l'écran avant de relâcher le défilement */
-    var t = clamp(raw / 0.75);
-    t = t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
-
-    render(t);
+  function ease(x) {
+    return x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2;
   }
 
-  function onScroll() {
-    if (!ticking) { ticking = true; window.requestAnimationFrame(update); }
+  function play() {
+    var t0 = null;
+    function frame(now) {
+      if (t0 === null) { t0 = now; }
+      var p = Math.min(1, (now - t0) / DURATION);
+      render(ease(p));
+      if (p < 1) { window.requestAnimationFrame(frame); }
+    }
+    window.requestAnimationFrame(frame);
   }
 
-  window.addEventListener('scroll', onScroll, { passive: true });
-  window.addEventListener('resize', onScroll);
-  update();
+  var started = false;
+
+  function start() {
+    if (started) { return; }
+    started = true;
+    window.removeEventListener('scroll', start);
+    if (DELAY > 0) { window.setTimeout(play, DELAY); } else { play(); }
+  }
+
+  /* page rouverte à une position déjà défilée : on lance sans attendre */
+  if (window.scrollY > 0) {
+    start();
+  } else {
+    window.addEventListener('scroll', start, { passive: true });
+  }
 })();
