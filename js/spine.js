@@ -1,4 +1,4 @@
-/* BUILD 9 */
+/* BUILD 10 */
 /* Chloé Chevallier — Chiropracteur
    Colonne vertébrale vue de profil.
    À l'arrivée sur la page, la colonne part de la posture affaissée et se
@@ -24,10 +24,11 @@
   var MOBILE_QUERY   = '(max-width: 960px)';
   var MOBILE_DELAY   = 900;
 
-  /* Passer à false pour animer même quand le visiteur a demandé de réduire les
-     animations dans les réglages de son système. Déconseillé : c'est un
-     réglage d'accessibilité, certaines personnes en ont besoin. */
-  var RESPECT_REDUCED_MOTION = true;
+  /* iOS « Réglages > Accessibilité > Mouvement > Réduire les animations »
+     supprimait purement et simplement l'animation, sur Safari comme sur
+     Chrome puisque le réglage vient du système. Repasser à true pour
+     respecter ce choix — voir la note du README avant de le faire. */
+  var RESPECT_REDUCED_MOTION = false;
 
   var NS = 'http://www.w3.org/2000/svg';
   var svg = document.getElementById('spine');
