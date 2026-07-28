@@ -1,4 +1,4 @@
-/* BUILD 8 */
+/* BUILD 11 */
 /* Chloé Chevallier — Chiropracteur
    Interactions : menu mobile, mise en avant du jour courant, révélations au défilement. */
 
@@ -28,6 +28,18 @@
   var today = new Date().getDay(); // 0 = dimanche
   var row = document.querySelector('.hours tr[data-day="' + today + '"]');
   if (row) { row.classList.add('is-today'); }
+
+  /* --- Invite au défilement : s'efface dès qu'on part, revient en haut --- */
+  var cue = document.querySelector('.scroll-cue');
+  if (cue) {
+    window.addEventListener('scroll', function () {
+      var y = window.pageYOffset !== undefined
+        ? window.pageYOffset
+        : (document.documentElement || document.body).scrollTop;
+      if (y > 40) { cue.className = 'scroll-cue is-gone'; }
+      else { cue.className = 'scroll-cue'; }
+    }, { passive: true });
+  }
 
   /* --- Révélations au défilement --- */
   var blocks = document.querySelectorAll('.reveal');

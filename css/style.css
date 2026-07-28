@@ -1,4 +1,4 @@
-/* BUILD 8 */
+/* BUILD 11 */
 /* ============================================================
    Chloé Chevallier — Chiropracteur
    Palette : blanc dominant, doré en accent
@@ -212,7 +212,62 @@ a{ color:inherit; }
 
 /* ---------- Scène d'ouverture ---------- */
 
-.stage{ padding-block:clamp(48px,7vw,104px) clamp(56px,8vw,112px); }
+.stage{
+  position:relative;
+  padding-block:clamp(48px,7vw,104px) clamp(56px,8vw,112px);
+}
+
+/* ---------- Invite au défilement (desktop uniquement) ---------- */
+
+/* Position fixe et non absolue : la section est plus haute que la fenêtre,
+   une invite calée sur son bas tombait sous la ligne de flottaison. */
+.scroll-cue{
+  position:fixed;
+  z-index:40;
+  left:50%; bottom:clamp(14px,3vh,30px);
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:12px;
+  transform:translateX(-50%);
+  transition:opacity .45s ease, transform .45s ease;
+}
+.scroll-cue.is-gone{
+  opacity:0;
+  transform:translate(-50%, 12px);
+  pointer-events:none;
+}
+
+.scroll-cue__label{
+  font-size:10px;
+  letter-spacing:.26em;
+  text-transform:uppercase;
+  color:var(--slate);
+}
+
+.scroll-cue__track{
+  position:relative;
+  display:block;
+  width:1px; height:52px;
+  background:linear-gradient(var(--gold-pale), rgba(234,223,192,0));
+}
+
+/* le losange reprend le motif des puces de section */
+.scroll-cue__track i{
+  position:absolute;
+  left:50%; top:0;
+  width:6px; height:6px;
+  margin-left:-3px;
+  background:var(--gold);
+  animation:cue-fall 2.2s cubic-bezier(.55,0,.45,1) infinite;
+}
+
+@keyframes cue-fall{
+  0%   { transform:translateY(-5px) rotate(45deg); opacity:0; }
+  22%  { opacity:1; }
+  74%  { opacity:1; }
+  100% { transform:translateY(46px) rotate(45deg); opacity:0; }
+}
 
 .stage__in{
   display:grid;
@@ -523,7 +578,21 @@ a{ color:inherit; }
    Adaptatif
    ============================================================ */
 
+/* Fenêtres desktop basses : le héros dépassait la fenêtre et son bas venait
+   percuter l'invite au défilement. On le comprime pour qu'il tienne. */
+@media (min-width: 961px) and (max-height: 820px){
+  .stage{ padding-block:clamp(24px,3.5vh,56px) clamp(76px,10vh,104px); }
+  .hero__title{ font-size:clamp(40px,5.4vw,74px); }
+  .lede{ font-size:16px; margin-bottom:24px; max-width:42ch; }
+  .hero__actions .btn{ padding:13px 24px; }
+  .rating{ margin-top:20px; }
+  .spine{ width:min(100%, 16vh); }
+  .stage__fig .spine{ margin-bottom:10px; }
+}
+
 @media (max-width: 960px){
+  .scroll-cue{ display:none; }
+
   .stage__in{
     grid-template-columns:1fr;
     gap:20px;
@@ -571,9 +640,15 @@ a{ color:inherit; }
     transition-duration:.001ms !important;
   }
   .reveal{ opacity:1; transform:none; }
+  /* une boucle est exactement ce que ce réglage vise : on fige le losange */
+  .scroll-cue__track i{
+    animation:none !important;
+    transform:translateY(18px) rotate(45deg);
+    opacity:1;
+  }
 }
 
 @media print{
-  .topbar,.burger,.close,.spine,.stage__meter{ display:none; }
+  .topbar,.burger,.close,.spine,.stage__meter,.scroll-cue{ display:none; }
   body{ color:#000; }
 }
