@@ -1,4 +1,4 @@
-/* BUILD 8 */
+/* BUILD 9 */
 /* Chloé Chevallier — Chiropracteur
    Colonne vertébrale vue de profil.
    À l'arrivée sur la page, la colonne part de la posture affaissée et se
@@ -17,6 +17,12 @@
   var DURATION       = 1500;  // ms pour une course complète, dans un sens ou dans l'autre
   var AUTOPLAY_DELAY = 300;   // ms avant le redressement automatique à l'arrivée
   var TOP_EPS        = 4;     // px sous lesquels on considère être « tout en haut »
+  var STALL          = 250;   // ms au-delà desquels on considère la page gelée
+
+  /* En dessous de cette largeur, on attend plus longtemps avant de lancer :
+     sur mobile la page s'affiche bien après l'exécution du script. */
+  var MOBILE_QUERY   = '(max-width: 960px)';
+  var MOBILE_DELAY   = 900;
 
   /* Passer à false pour animer même quand le visiteur a demandé de réduire les
      animations dans les réglages de son système. Déconseillé : c'est un
@@ -198,9 +204,18 @@
        qu'on parte du début ou qu'on inverse à mi-course */
     var dur = DURATION * dist;
     var t0 = null;
+    var last = null;
 
     function frame(now) {
-      if (t0 === null) { t0 = now; }
+      if (t0 === null) { t0 = now; last = now; }
+
+      /* Safari iOS suspend les frames pendant le chargement et les
+         transitions, alors que l'horloge continue. Sans ce rattrapage, la
+         première frame après le gel calcule un temps écoulé supérieur à la
+         durée et saute directement à la fin. */
+      if (now - last > STALL) { t0 += (now - last); }
+      last = now;
+
       var p = Math.min(1, (now - t0) / dur);
       cur = from + (to - from) * ease(p);
       render(cur);
@@ -246,9 +261,33 @@
 
   window.addEventListener('scroll', onScroll, { passive: true });
 
-  /* Arrivée sur la page : le redressement se joue toujours, sans condition. */
-  window.setTimeout(function () {
-    animateTo(1);
-    armed = true;
-  }, AUTOPLAY_DELAY);
+  /* Arrivée sur la page. Le départ est calé sur l'événement « load », pas sur
+     l'exécution du script : sur mobile, polices et images retardent le premier
+     affichage de plus d'une seconde, et l'animation se jouait derrière un
+     écran encore blanc. Un filet à 3 s couvre le cas où une ressource traîne.
+     Si l'onglet n'est pas au premier plan, on attend qu'il le devienne. */
+  var begun = false;
+  var delay = window.matchMedia(MOBILE_QUERY).matches ? MOBILE_DELAY : AUTOPLAY_DELAY;
+
+  function begin() {
+    if (begun) { return; }
+
+    if (document.visibilityState === 'hidden') {
+      document.addEventListener('visibilitychange', begin, { once: true });
+      return;
+    }
+
+    begun = true;
+    window.setTimeout(function () {
+      animateTo(1);
+      armed = true;
+    }, delay);
+  }
+
+  if (document.readyState === 'complete') {
+    begin();
+  } else {
+    window.addEventListener('load', begin);
+    window.setTimeout(begin, 3000);
+  }
 })();
