@@ -160,7 +160,11 @@
 
   render(0);   // on part toujours de la posture affaissée
 
-  if (RESPECT_REDUCED_MOTION &&
+  /* Ajouter ?motion=force à l'URL passe outre le réglage système, le temps
+     de vérifier si c'est bien lui qui supprime l'animation. */
+  var forced = /[?&]motion=force/.test(window.location.search);
+
+  if (!forced && RESPECT_REDUCED_MOTION &&
       window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
     render(1);
     return;
@@ -218,11 +222,22 @@
      Appelée uniquement quand l'état bascule, donc sans coût au défilement. */
   function onScreen() {
     var r = svg.getBoundingClientRect();
+    /* mesure douteuse : on préfère animer plutôt que sauter, l'erreur est
+       moins grave dans ce sens */
+    if (!r || r.height === 0) { return true; }
     var h = window.innerHeight || document.documentElement.clientHeight;
     return r.bottom > 0 && r.top < h;
   }
 
+  /* Tant que l'animation d'arrivée n'a pas été lancée, le défilement est
+     ignoré. Safari iOS émet un événement de défilement pendant le chargement
+     — rétractation de la barre d'adresse, restauration de position — et cet
+     événement suffisait à faire sauter la colonne en position finale avant
+     que l'animation n'ait eu lieu. */
+  var armed = false;
+
   function onScroll() {
+    if (!armed) { return; }
     var to = scrollTop() > TOP_EPS ? 1 : 0;
     if (to === target) { return; }
     if (onScreen()) { animateTo(to); } else { jumpTo(to); }
@@ -230,10 +245,9 @@
 
   window.addEventListener('scroll', onScroll, { passive: true });
 
-  /* Arrivée sur la page : le redressement se joue toujours, sans condition.
-     Safari iOS restaure souvent la position de défilement au rechargement —
-     s'en servir comme condition revenait à supprimer l'animation. */
+  /* Arrivée sur la page : le redressement se joue toujours, sans condition. */
   window.setTimeout(function () {
-    if (target === 0) { animateTo(1); }
+    animateTo(1);
+    armed = true;
   }, AUTOPLAY_DELAY);
 })();
