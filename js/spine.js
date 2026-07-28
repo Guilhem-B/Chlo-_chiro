@@ -1,9 +1,10 @@
 /* Chloé Chevallier — Chiropracteur
    Colonne vertébrale vue de profil.
-   La colonne s'affiche en posture affaissée. Dès que la page défile, elle se
-   redresse vers la courbure physiologique ; de retour tout en haut, elle
-   revient à la posture affaissée. Le mouvement est réversible en cours de
-   route et garde une vitesse constante. */
+   À l'arrivée sur la page, la colonne part de la posture affaissée et se
+   redresse vers la courbure physiologique. Ensuite le défilement commande :
+   tout en haut de page elle s'affaisse, dès qu'on redescend elle se redresse.
+   Le mouvement est réversible en cours de route et garde une vitesse
+   constante. */
 
 (function () {
   'use strict';
@@ -12,23 +13,18 @@
      Réglages
      --------------------------------------------------------------- */
 
-  var DELAY    = 0;     // ms d'attente après le déclenchement
-  var DURATION = 800;   // ms pour une course complète, dans un sens ou dans l'autre
-  var TOP_EPS  = 4;     // px sous lesquels on considère être « tout en haut »
+  var DURATION       = 1500;  // ms pour une course complète, dans un sens ou dans l'autre
+  var AUTOPLAY_DELAY = 300;   // ms avant le redressement automatique à l'arrivée
+  var TOP_EPS        = 4;     // px sous lesquels on considère être « tout en haut »
 
-  /* Sur petit écran la colonne est au-dessus du texte : un seul geste la fait
-     sortir du champ, et une animation déclenchée au défilement n'est jamais vue.
-     Elle se joue donc toute seule. Mettre '' pour désactiver. */
-  var AUTOPLAY       = '(max-width: 960px)';
-  var AUTOPLAY_DELAY = 500;
+  /* Passer à false pour animer même quand le visiteur a demandé de réduire les
+     animations dans les réglages de son système. Déconseillé : c'est un
+     réglage d'accessibilité, certaines personnes en ont besoin. */
+  var RESPECT_REDUCED_MOTION = true;
 
   var NS = 'http://www.w3.org/2000/svg';
   var svg = document.getElementById('spine');
-  var stage = document.querySelector('.stage');
-  if (!svg || !stage) { return; }
-
-  /* plus d'épinglage : la scène redevient un héros de hauteur normale */
-  document.body.classList.add('no-pin');
+  if (!svg) { return; }
 
   /* ---------------------------------------------------------------
      Géométrie
@@ -162,9 +158,10 @@
      Déclenchement
      --------------------------------------------------------------- */
 
-  render(0);
+  render(0);   // on part toujours de la posture affaissée
 
-  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+  if (RESPECT_REDUCED_MOTION &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
     render(1);
     return;
   }
@@ -183,20 +180,14 @@
   var cur = 0;        // avancement affiché
   var target = 0;     // avancement visé
   var raf = null;
-  var pending = null;
   var visible = true; // la colonne est-elle à l'écran
-
-  function stop() {
-    if (raf) { window.cancelAnimationFrame(raf); raf = null; }
-    if (pending) { window.clearTimeout(pending); pending = null; }
-  }
 
   function animateTo(to) {
     var from = cur;
     var dist = Math.abs(to - from);
     target = to;
-    stop();
 
+    if (raf) { window.cancelAnimationFrame(raf); raf = null; }
     if (dist < 0.002) { cur = to; render(cur); return; }
 
     /* durée proportionnelle au chemin restant : la vitesse reste la même
@@ -215,46 +206,38 @@
     raf = window.requestAnimationFrame(frame);
   }
 
-  /* hors du champ : on se cale sans animer, rien à montrer */
+  /* hors du champ : on se cale sans animer, il n'y a rien à montrer */
   function jumpTo(to) {
-    stop();
+    if (raf) { window.cancelAnimationFrame(raf); raf = null; }
     target = to;
     cur = to;
     render(cur);
   }
 
-  function request(to) {
-    if (to === target) { return; }
-    if (!visible) { jumpTo(to); return; }
-    if (pending) { window.clearTimeout(pending); pending = null; }
-    if (DELAY > 0) {
-      pending = window.setTimeout(function () { pending = null; animateTo(to); }, DELAY);
-    } else {
-      animateTo(to);
-    }
-  }
-
   function onScroll() {
-    request(scrollTop() > TOP_EPS ? 1 : 0);
+    var to = scrollTop() > TOP_EPS ? 1 : 0;
+    if (to === target) { return; }
+    if (visible) { animateTo(to); } else { jumpTo(to); }
   }
 
   window.addEventListener('scroll', onScroll, { passive: true });
 
-  /* On ne joue l'animation que si la colonne est réellement à l'écran :
-     inutile de la dérouler dans le vide quand le geste a déjà tout dépassé. */
+  /* On n'anime que si la colonne est réellement à l'écran : inutile de la
+     dérouler dans le vide quand le geste a déjà tout dépassé. */
   if ('IntersectionObserver' in window) {
     new IntersectionObserver(function (entries) {
       visible = entries[0].isIntersecting;
-      if (visible) { onScroll(); }
-    }, { threshold: 0.25 }).observe(svg);
+    }, { threshold: 0.2 }).observe(svg);
   }
 
-  onScroll();   // page rouverte à une position déjà défilée
-
-  /* Lecture automatique là où le défilement emporte trop vite la colonne */
-  if (AUTOPLAY && window.matchMedia(AUTOPLAY).matches) {
+  /* 1. Arrivée sur la page : redressement automatique.
+     Si la page est rouverte à une position déjà défilée, elle est déjà
+     censée être redressée — on s'y cale sans jouer l'animation deux fois. */
+  if (scrollTop() > TOP_EPS) {
+    jumpTo(1);
+  } else {
     window.setTimeout(function () {
-      if (target === 0 && visible) { animateTo(1); }
+      if (target === 0) { animateTo(1); }
     }, AUTOPLAY_DELAY);
   }
 })();
