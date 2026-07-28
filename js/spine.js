@@ -180,7 +180,6 @@
   var cur = 0;        // avancement affiché
   var target = 0;     // avancement visé
   var raf = null;
-  var visible = true; // la colonne est-elle à l'écran
 
   function animateTo(to) {
     var from = cur;
@@ -214,30 +213,27 @@
     render(cur);
   }
 
+  /* Mesure directe plutôt qu'un IntersectionObserver : getBoundingClientRect
+     se comporte de façon identique partout, y compris sur les éléments SVG.
+     Appelée uniquement quand l'état bascule, donc sans coût au défilement. */
+  function onScreen() {
+    var r = svg.getBoundingClientRect();
+    var h = window.innerHeight || document.documentElement.clientHeight;
+    return r.bottom > 0 && r.top < h;
+  }
+
   function onScroll() {
     var to = scrollTop() > TOP_EPS ? 1 : 0;
     if (to === target) { return; }
-    if (visible) { animateTo(to); } else { jumpTo(to); }
+    if (onScreen()) { animateTo(to); } else { jumpTo(to); }
   }
 
   window.addEventListener('scroll', onScroll, { passive: true });
 
-  /* On n'anime que si la colonne est réellement à l'écran : inutile de la
-     dérouler dans le vide quand le geste a déjà tout dépassé. */
-  if ('IntersectionObserver' in window) {
-    new IntersectionObserver(function (entries) {
-      visible = entries[0].isIntersecting;
-    }, { threshold: 0.2 }).observe(svg);
-  }
-
-  /* 1. Arrivée sur la page : redressement automatique.
-     Si la page est rouverte à une position déjà défilée, elle est déjà
-     censée être redressée — on s'y cale sans jouer l'animation deux fois. */
-  if (scrollTop() > TOP_EPS) {
-    jumpTo(1);
-  } else {
-    window.setTimeout(function () {
-      if (target === 0) { animateTo(1); }
-    }, AUTOPLAY_DELAY);
-  }
+  /* Arrivée sur la page : le redressement se joue toujours, sans condition.
+     Safari iOS restaure souvent la position de défilement au rechargement —
+     s'en servir comme condition revenait à supprimer l'animation. */
+  window.setTimeout(function () {
+    if (target === 0) { animateTo(1); }
+  }, AUTOPLAY_DELAY);
 })();

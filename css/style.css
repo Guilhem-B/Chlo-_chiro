@@ -154,6 +154,7 @@ a{ color:inherit; }
 .topbar{
   position:sticky; top:0; z-index:60;
   background:rgba(255,255,255,.94);
+  -webkit-backdrop-filter:blur(8px);
   backdrop-filter:blur(8px);
   border-bottom:1px solid var(--gold-pale);
 }
