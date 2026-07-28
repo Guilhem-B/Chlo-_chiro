@@ -245,18 +245,20 @@ a{ color:inherit; }
 
 .stage__fig{
   margin:0;
-  display:flex;
-  flex-direction:column;
-  align-items:center;
-  gap:16px;
+  text-align:center;
 }
 
+/* Dimensionnement par la LARGEUR uniquement. « height:auto » raboté par un
+   « max-height » produit une boîte qui ne respecte pas le ratio du viewBox :
+   Chromium l'accepte, WebKit résout la hauteur à zéro et le dessin disparaît.
+   La largeur en vh cale la hauteur sans jamais toucher à la hauteur. */
 .spine{
-  width:100%;
-  max-width:330px;
+  display:block;
+  width:min(100%, 21vh);
+  max-width:200px;
   height:auto;
-  max-height:68vh;
-  max-height:68svh;
+  aspect-ratio:244 / 796;
+  margin:0 auto 16px;
 }
 
 /* pièces dessinées par js/spine.js */
@@ -264,6 +266,7 @@ a{ color:inherit; }
 .spine .skull,
 .spine .sacrum{
   fill:none;
+  stroke:#B08D2F;
   stroke:var(--gold);
   stroke-width:1.5;
   stroke-linecap:round;
@@ -271,10 +274,11 @@ a{ color:inherit; }
 }
 .spine .vt rect,
 .spine .skull ellipse,
-.spine .sacrum path{ fill:var(--paper); }
-.spine .dot{ fill:var(--gold); stroke:none; }
+.spine .sacrum path{ fill:#FFFFFF; fill:var(--paper); }
+.spine .dot{ fill:#B08D2F; fill:var(--gold); stroke:none; }
 
 .spine .plumb{
+  stroke:#EADFC0;
   stroke:var(--gold-pale);
   stroke-width:1;
   stroke-dasharray:2 7;
@@ -300,6 +304,7 @@ a{ color:inherit; }
 /* jauge de correction */
 .stage__meter{
   width:min(100%,220px);
+  margin:0 auto;
   height:1px;
   background:var(--gold-pale);
 }
@@ -522,8 +527,8 @@ a{ color:inherit; }
     grid-template-columns:1fr;
     gap:20px;
   }
-  .stage__fig{ order:-1; gap:10px; }
-  .spine{ max-width:215px; max-height:38vh; max-height:38svh; }
+  .stage__fig{ order:-1; }
+  .spine{ width:min(100%, 12vh); max-width:120px; margin-bottom:10px; }
   .hero__title{ font-size:clamp(40px,11vw,64px); }
   .lede{ font-size:16px; margin-bottom:24px; }
   .rating{ margin-top:20px; }
