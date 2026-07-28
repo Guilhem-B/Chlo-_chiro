@@ -16,6 +16,12 @@
   var DURATION = 800;   // ms pour une course complète, dans un sens ou dans l'autre
   var TOP_EPS  = 4;     // px sous lesquels on considère être « tout en haut »
 
+  /* Sur petit écran la colonne est au-dessus du texte : un seul geste la fait
+     sortir du champ, et une animation déclenchée au défilement n'est jamais vue.
+     Elle se joue donc toute seule. Mettre '' pour désactiver. */
+  var AUTOPLAY       = '(max-width: 960px)';
+  var AUTOPLAY_DELAY = 500;
+
   var NS = 'http://www.w3.org/2000/svg';
   var svg = document.getElementById('spine');
   var stage = document.querySelector('.stage');
@@ -153,7 +159,7 @@
   }
 
   /* ---------------------------------------------------------------
-     Déclenchement au défilement, dans les deux sens
+     Déclenchement
      --------------------------------------------------------------- */
 
   render(0);
@@ -167,17 +173,29 @@
     return x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2;
   }
 
+  /* iOS ancien ne connaît pas window.scrollY */
+  function scrollTop() {
+    return window.pageYOffset !== undefined
+      ? window.pageYOffset
+      : (document.documentElement || document.body).scrollTop;
+  }
+
   var cur = 0;        // avancement affiché
   var target = 0;     // avancement visé
   var raf = null;
   var pending = null;
+  var visible = true; // la colonne est-elle à l'écran
+
+  function stop() {
+    if (raf) { window.cancelAnimationFrame(raf); raf = null; }
+    if (pending) { window.clearTimeout(pending); pending = null; }
+  }
 
   function animateTo(to) {
     var from = cur;
     var dist = Math.abs(to - from);
     target = to;
-
-    if (raf) { window.cancelAnimationFrame(raf); raf = null; }
+    stop();
 
     if (dist < 0.002) { cur = to; render(cur); return; }
 
@@ -197,8 +215,17 @@
     raf = window.requestAnimationFrame(frame);
   }
 
+  /* hors du champ : on se cale sans animer, rien à montrer */
+  function jumpTo(to) {
+    stop();
+    target = to;
+    cur = to;
+    render(cur);
+  }
+
   function request(to) {
     if (to === target) { return; }
+    if (!visible) { jumpTo(to); return; }
     if (pending) { window.clearTimeout(pending); pending = null; }
     if (DELAY > 0) {
       pending = window.setTimeout(function () { pending = null; animateTo(to); }, DELAY);
@@ -208,9 +235,26 @@
   }
 
   function onScroll() {
-    request(window.scrollY > TOP_EPS ? 1 : 0);
+    request(scrollTop() > TOP_EPS ? 1 : 0);
   }
 
   window.addEventListener('scroll', onScroll, { passive: true });
+
+  /* On ne joue l'animation que si la colonne est réellement à l'écran :
+     inutile de la dérouler dans le vide quand le geste a déjà tout dépassé. */
+  if ('IntersectionObserver' in window) {
+    new IntersectionObserver(function (entries) {
+      visible = entries[0].isIntersecting;
+      if (visible) { onScroll(); }
+    }, { threshold: 0.25 }).observe(svg);
+  }
+
   onScroll();   // page rouverte à une position déjà défilée
+
+  /* Lecture automatique là où le défilement emporte trop vite la colonne */
+  if (AUTOPLAY && window.matchMedia(AUTOPLAY).matches) {
+    window.setTimeout(function () {
+      if (target === 0 && visible) { animateTo(1); }
+    }, AUTOPLAY_DELAY);
+  }
 })();

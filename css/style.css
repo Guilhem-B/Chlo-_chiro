@@ -288,6 +288,7 @@ a{ color:inherit; }
   width:100%;
   max-width:330px;
   height:auto;
+  max-height:68vh;
   max-height:68svh;
 }
 
@@ -564,7 +565,7 @@ a{ color:inherit; }
     padding-top:60px;
   }
   .stage__fig{ order:-1; gap:10px; }
-  .spine{ max-width:215px; max-height:38svh; }
+  .spine{ max-width:215px; max-height:38vh; max-height:38svh; }
   .hero__title{ font-size:clamp(40px,11vw,64px); }
   .lede{ font-size:16px; margin-bottom:24px; }
   .rating{ margin-top:20px; }
